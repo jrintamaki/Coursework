@@ -1,0 +1,140 @@
+.pos 0
+irmovq $0x800, %rsp
+irmovq $0x800, %rbp
+irmovq $0x32, %r8 #x0
+irmovq $0x32, %r9 #y0
+irmovq $0xa, %r10 #radius
+/*
+registers
+rax immediate 1
+rcx immediate 32
+rdx temp x
+rbx temp y
+rsp stack pointer
+rbp stack pointer
+rsi
+rdi err
+r8  x0
+r9  y0
+r10 radius
+r11 x
+r12 y
+r13 dx
+r14 dy
+*/
+main:
+  irmovq $1,  %rax
+  irmovq $32, %rcx
+  irmovq $1, %r13
+  irmovq $1, %r14
+  rrmovq %r10, %r11
+  subq %rax, %r11 # x = radius-1
+  addq %r10, %r10 # radius << 1
+  addq %r13, %rdi # err = dx (1)
+  subq %r10, %rdi # err = err - (radius << 1)
+loop: #while x >= y
+  xorq %rdx, %rdx # set to 0
+  #putpixel(x0 + x, y0 + y)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  addq %r11, %rdx #rdx = x0 + x
+  addq %r12, %rbx #rbx = y0 + y
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 + y, y0 + x)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  addq %r12, %rdx #rdx = x0 + y
+  addq %r11, %rbx #rbx = y0 + x
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 - y, y0 + x)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  subq %r12, %rdx #rdx = x0 - y
+  addq %r11, %rbx #rbx = y0 + x
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 - x, y0 + y)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  subq %r11, %rdx #rdx = x0 - x
+  addq %r12, %rbx #rbx = y0 + y
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 - x, y0 - y)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  subq %r11, %rdx #rdx = x0 - x
+  subq %r12, %rbx #rbx = y0 - y
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 - y, y0 - x)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  subq %r12, %rdx #rdx = x0 - y
+  subq %r11, %rbx #rbx = y0 - x
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 + y, y0 - x)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  addq %r12, %rdx #rdx = x0 + y
+  subq %r11, %rbx #rbx = y0 - x
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+  #putpixel(x0 + x, y0 - y)
+  rrmovq %r8, %rdx #rdx = x0
+  rrmovq %r9, %rbx #rbx = y0
+  addq %r11, %rdx #rdx = x0 + x
+  subq %r12, %rbx #rbx = y0 - y
+  call shift
+  pushq %rsi #push to stack
+  xorq %rsi, %rsi #set to 0
+
+  rrmovq %rdi, %rdx # rdx = err
+  subq %rbx, %rdx # err - 0
+  jge if1 #if err > 0 will jump
+  xorq %rdx, %rdx # set to 0
+  addq %rax, %r12 #y++
+  addq %r14, %rdi #err += dy
+  addq %rax, %r14 #dy++
+  addq %rax, %r14 #dy++ ( dy += 2)
+if1:
+  rrmovq %rdi, %rdx # rdx = err
+  subq %rbx, %rdx # err - 0
+  jge if2 # if err > 0 will jump
+  jmp if3
+if2:
+  xorq %rdx, %rdx #set to 0
+  subq %rax, %r11 #x--
+  addq %rax, %r13 #dx++
+  addq %rax, %r13 #dx++ ( dx += 2)
+  rrmovq %r13, %rdx # rdx = dx
+  subq %r10, %rdx # dx = dx - (radius << 1)
+  addq %rdx, %rdi # err += dx - (radius-1)
+  xorq %rdx, %rdx #set to 0
+if3:
+  rrmovq %r11, %rdx # rdx = x
+  subq %r12, %rdx # x - y
+  jge loop # if x - y > 0 then jump to loop
+  halt
+
+
+shift: #this func shifts x and add y returns to register rsi
+  addq %rdx, %rdx # shift rdx << 1
+  subq %rax, %rcx # times to shift -1
+  jne shift # if times to shift > 0
+  rrmovq %rdx, %rsi # copy x to rsi
+  addq %rbx, %rsi  # add y to rsi
+  irmovq $32, %rcx # set rcx back to 32
+  xorq %rdx, %rdx #set to 0
+  xorq %rbx, %rbx #set to 0
+  ret
